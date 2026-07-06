@@ -1,0 +1,15 @@
+.DS_Store
+/.build
+/Packages
+/*.xcodeproj/xcuserdata
+/*.xcworkspace/xcuserdata
+xcuserdata/
+DerivedData/
+.swiftpm/config/registries.json
+.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
+.netrc
+*.ipa
+*.dSYM.zip
+*.dSYM
+.hilt-output/
+hilt-output/
