@@ -13,3 +13,4 @@ DerivedData/
 *.dSYM
 .hilt-output/
 hilt-output/
+/build/
