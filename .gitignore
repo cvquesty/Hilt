@@ -14,3 +14,6 @@ DerivedData/
 .hilt-output/
 hilt-output/
 /build/
+.secrets/
+*.p8
+AuthKey_*.p8

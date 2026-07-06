@@ -55,6 +55,33 @@ CLI:
 .build/release/hilt -o ~/Desktop/hilt-output ~/Downloads/module.bblx
 ```
 
+## TestFlight (macOS)
+
+| | |
+|---|---|
+| **Store name** | Hilt for e-Sword X |
+| **Bundle ID** | `org.questy.hilt` |
+| **Apple ID** | `6788101386` |
+| **Team** | QCLT43467P (Jerald Sheets) |
+| **Min macOS** | 13.0 |
+
+One-shot archive + upload:
+
+```bash
+bash Scripts/ship-mac.sh
+```
+
+Then open [TestFlight for this app](https://appstoreconnect.apple.com/apps/6788101386/testflight/macos) (or the **TestFlight** app on your Mac) and install the latest build once processing finishes.
+
+Local install without TestFlight (dev-signed, same machine):
+
+```bash
+xcodebuild -project Hilt.xcodeproj -scheme Hilt -configuration Release \
+  -destination 'platform=macOS' -derivedDataPath build/DerivedData build
+cp -R build/DerivedData/Build/Products/Release/Hilt.app /Applications/
+open /Applications/Hilt.app
+```
+
 ## Project layout
 
 ```

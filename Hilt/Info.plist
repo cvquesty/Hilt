@@ -32,5 +32,8 @@
 	<true/>
 	<key>NSSupportsSuddenTermination</key>
 	<true/>
+	<!-- Skip manual export-compliance questionnaire in App Store Connect / TestFlight -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>

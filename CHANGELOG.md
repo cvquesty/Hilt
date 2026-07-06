@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.1 (2026-07-06) — build 4
+
+### App Store Connect / TestFlight
+- Registered bundle ID `org.questy.hilt` (UNIVERSAL) on team QCLT43467P
+- Created App Store Connect app **Hilt for e-Sword X** (Apple ID `6788101386`) — plain name “Hilt” was already taken on the store
+- Uploaded macOS build **0.1.1 (4)** to TestFlight (VALID)
+- Internal Testers beta group + en-US beta localization
+- Export compliance declared in Info.plist (`ITSAppUsesNonExemptEncryption` = false)
+- App Sandbox + user-selected read/write entitlements for Mac App Store distribution
+- Ship scripts: `Scripts/archive-mac.sh`, `Scripts/ship-mac.sh`
+
 ## 0.1.1 (2026-07-06)
 
 ### Added
