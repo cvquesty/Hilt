@@ -7,16 +7,19 @@ OUT="$ROOT/build"
 mkdir -p "$OUT"
 
 echo "→ Archiving Hilt (Release, generic macOS)…"
+rm -rf "$OUT/Hilt.xcarchive" "$OUT/export"
 xcodebuild -project Hilt.xcodeproj -scheme Hilt \
   -configuration Release \
   -destination 'generic/platform=macOS' \
   -archivePath "$OUT/Hilt.xcarchive" \
+  -allowProvisioningUpdates \
   archive
 
 echo "→ Exporting / uploading to App Store Connect…"
 xcodebuild -exportArchive \
   -archivePath "$OUT/Hilt.xcarchive" \
   -exportOptionsPlist ExportOptions.plist \
-  -exportPath "$OUT/export"
+  -exportPath "$OUT/export" \
+  -allowProvisioningUpdates
 
-echo "Done. Check App Store Connect / TestFlight for processing."
+echo "Done. Check App Store Connect → Hilt → TestFlight for processing."

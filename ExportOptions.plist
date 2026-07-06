@@ -10,5 +10,9 @@
 	<string>automatic</string>
 	<key>teamID</key>
 	<string>QCLT43467P</string>
+	<key>uploadSymbols</key>
+	<true/>
+	<key>manageAppVersionAndBuildNumber</key>
+	<false/>
 </dict>
 </plist>
