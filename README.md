@@ -9,12 +9,13 @@ Hilt converts **unlocked** Windows / BibleSupport-style e-Sword modules into the
 
 ## Features
 
-- **macOS app** — toolbar actions, drop zone, modules table, always-visible output path
-- **Help menu** — offline Hilt Help (Welcome, Add modules, Output, Convert, e-Sword X import, limits)
+- **macOS app** — clear **Sources** vs **Destination** regions, modules table, workflow checklist
+- **Help menu** — offline **Hilt Help** window (⌘?) with full topics; not a modal sheet
 - **CLI** — `hilt` for scripts
 - **Types (MVP)** — `.bblx`→`.bbli`, `.cmtx`→`.cmti`, `.dctx`→`.dcti`, `.topx`→`.topi`
 - RTF → HTML for common markup; refuses encrypted modules
 - Pure Swift + system SQLite
+- Non-destructive defaults (Overwrite off unless you enable it in Settings)
 
 ## Requirements
 
@@ -24,11 +25,18 @@ Hilt converts **unlocked** Windows / BibleSupport-style e-Sword modules into the
 
 ## Using the app
 
-1. **Drop** modules on the dashed area (or **File → Add Modules…** / ⌘O).
-2. Read the **Modules** table — only **Ready** rows convert; others show a **Reason**.
-3. **Choose Output Folder…** — the Output strip always shows where files will be written.
+**Two zones — do not mix them up:**
+
+1. **Sources** (top) — Drop unlocked Windows modules here (`.bblx`, `.cmtx`, `.dctx`, `.topx`), or **File → Add Modules…** (⌘O).
+2. **Destination** (bottom) — **Choose Output Folder…** (⌘⇧O). Converted files are written **only** here. Sources are never modified.
+
+Then:
+
+3. Read the **Modules** table — only **Ready** rows convert; others show a **Reason**.
 4. Click **Convert** (⌘↩).
-5. **Show Output in Finder**, then in e-Sword X: **File → Resources → Import…**
+5. **Show in Finder**, then in e-Sword X: **File → Resources → Import…**
+
+**Help → Hilt Help** (⌘?) opens the offline guide (Welcome, sources, destination, convert, e-Sword X import, limits, shortcuts).
 
 Full walkthrough: [Docs/USER_GUIDE.md](Docs/USER_GUIDE.md)
 
@@ -38,7 +46,7 @@ Full walkthrough: [Docs/USER_GUIDE.md](Docs/USER_GUIDE.md)
 cd Hilt
 swift build -c release
 swift test
-.open Hilt.xcodeproj   # GUI / Archive / TestFlight
+open Hilt.xcodeproj   # GUI / Archive / TestFlight
 ```
 
 CLI:

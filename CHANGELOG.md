@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.1.1 (2026-07-06)
+
+### Added
+- **Help menu** — **Hilt Help** (⌘?) opens a non-modal Help window with full offline topics
+- Help topics: Welcome, sources, destination, queue, convert, e-Sword X import, limits, keyboard shortcuts
+- Workflow checklist in the main window (Add sources → Destination → Convert → Import)
+- Explicit **Sources** and **Destination** sections so drag-in vs write-out are unmistakable
+- Queue selection actions: Remove (Delete), Show Original in Finder, Copy Path (context menu + Edit menu)
+- Conversion progress (“Converting *n* of *m*…”) with progress indicator
+- Expanded [Docs/USER_GUIDE.md](Docs/USER_GUIDE.md)
+
+### Changed (Apple HIG compliance)
+- **About Hilt** moved to the application menu standard About panel (not Settings)
+- Settings hold conversion preferences only (Overwrite, Dry run, destination)
+- Overwrite defaults to **off** (non-destructive)
+- Unified labels: **Clear Queue**, **Show in Finder** everywhere
+- Removed misleading “always require output folder” preference (app always prompts when unset)
+- Help menu trimmed to **Hilt Help** + GitHub (topics live in the Help window)
+- Single primary `Window` for the converter; separate Help window
+- Overwrite / Dry run removed from main toolbar (Settings only)
+- Default table columns reduced to Status, File, Type, Title, Reason
+- Status bar is live state; import tips live in Help
+
+### UI guidance
+- Drop zone copy: “Drop **source** modules here”
+- Destination empty state: “No destination selected” with prominent **Choose Output Folder…**
+- Persistent rule: sources are not modified; output only goes to Destination
+
 ## 0.1.0 (2026-07-06)
 
 ### Added

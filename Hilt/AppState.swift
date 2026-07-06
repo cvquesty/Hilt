@@ -11,21 +11,19 @@ final class AppState: ObservableObject {
     @Published var outputDirectory: URL?
     @Published var results: [ConversionResult] = []
     @Published var isRunning = false
+    @Published var conversionProgress: String?
     @Published var selection = Set<ModuleInfo.ID>()
-    @Published var statusMessage = "Add or drop unlocked Windows e-Sword modules to begin."
+    @Published var statusMessage = "Add source modules, choose a destination folder, then Convert."
     @Published var isDropTargeted = false
-    @Published var showHelp = false
     @Published var helpTopicID: String = HelpTopic.welcome.id
     @Published var showOutputConfirm = false
 
-    @Published var overwrite = true {
+    /// Non-destructive default (HIG). UserDefaults preserves an explicit choice once set.
+    @Published var overwrite = false {
         didSet { UserDefaults.standard.set(overwrite, forKey: "hilt.overwrite") }
     }
     @Published var dryRun = false {
         didSet { UserDefaults.standard.set(dryRun, forKey: "hilt.dryRun") }
-    }
-    @Published var requireOutputFolder = false {
-        didSet { UserDefaults.standard.set(requireOutputFolder, forKey: "hilt.requireOutputFolder") }
     }
 
     init() {
@@ -36,22 +34,24 @@ final class AppState: ObservableObject {
         if d.object(forKey: "hilt.dryRun") != nil {
             dryRun = d.bool(forKey: "hilt.dryRun")
         }
-        if d.object(forKey: "hilt.requireOutputFolder") != nil {
-            requireOutputFolder = d.bool(forKey: "hilt.requireOutputFolder")
-        }
     }
 
     var readyCount: Int { queue.filter(\.isConvertible).count }
     var blockedCount: Int { queue.filter { !$0.isConvertible }.count }
 
+    /// Short path for the Destination control (never explains fallback policy here).
     var outputPathDescription: String {
         if let outputDirectory {
             return outputDirectory.path
         }
-        return "Not set — Convert will create a “hilt-output” folder next to each source file."
+        return "No destination selected"
     }
 
     var hasChosenOutput: Bool { outputDirectory != nil }
+
+    var selectedItems: [ModuleInfo] {
+        queue.filter { selection.contains($0.id) }
+    }
 
     // MARK: - Panels
 
@@ -70,7 +70,7 @@ final class AppState: ObservableObject {
             self?.addInputs(panel.urls)
         }
 
-        if let window = NSApp.keyWindow ?? NSApp.windows.first {
+        if let window = NSApp.keyWindow ?? NSApp.windows.first(where: { $0.isVisible }) {
             panel.beginSheetModal(for: window, completionHandler: finish)
         } else {
             finish(panel.runModal())
@@ -84,16 +84,16 @@ final class AppState: ObservableObject {
         panel.allowsMultipleSelection = false
         panel.canCreateDirectories = true
         panel.message = "Choose the folder where Hilt will write converted modules for e-Sword X"
-        panel.prompt = "Select"
+        panel.prompt = "Choose"
 
         let finish: (NSApplication.ModalResponse) -> Void = { [weak self] response in
             guard response == .OK, let url = panel.url else { return }
             _ = url.startAccessingSecurityScopedResource()
             self?.outputDirectory = url
-            self?.statusMessage = "Output folder set. Converted files will be written here."
+            self?.statusMessage = "Destination set. Converted files will be written only to this folder."
         }
 
-        if let window = NSApp.keyWindow ?? NSApp.windows.first {
+        if let window = NSApp.keyWindow ?? NSApp.windows.first(where: { $0.isVisible }) {
             panel.beginSheetModal(for: window, completionHandler: finish)
         } else {
             finish(panel.runModal())
@@ -104,7 +104,25 @@ final class AppState: ObservableObject {
         queue = []
         results = []
         selection = []
-        statusMessage = "Queue cleared. Add or drop modules to begin again."
+        conversionProgress = nil
+        statusMessage = "Queue cleared. Add source modules to begin again."
+    }
+
+    func removeSelectedFromQueue() {
+        guard !selection.isEmpty else { return }
+        let removing = selection
+        queue.removeAll { removing.contains($0.id) }
+        selection = []
+        results = []
+        let ready = readyCount
+        let blocked = blockedCount
+        if queue.isEmpty {
+            statusMessage = "Queue cleared. Add source modules to begin again."
+        } else if blocked == 0 {
+            statusMessage = "\(ready) module\(ready == 1 ? "" : "s") ready. Choose a destination, then Convert."
+        } else {
+            statusMessage = "\(ready) ready, \(blocked) cannot be converted — see Reason in the table."
+        }
     }
 
     func revealOutput() {
@@ -114,9 +132,23 @@ final class AppState: ObservableObject {
         NSWorkspace.shared.open(dir)
     }
 
+    func revealOriginalsInFinder() {
+        let urls = selectedItems.map(\.url)
+        guard !urls.isEmpty else { return }
+        NSWorkspace.shared.activateFileViewerSelecting(urls)
+    }
+
+    func copySelectedPaths() {
+        let paths = selectedItems.map(\.url.path).joined(separator: "\n")
+        guard !paths.isEmpty else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(paths, forType: .string)
+        statusMessage = "Copied \(selectedItems.count) path\(selectedItems.count == 1 ? "" : "s") to the clipboard."
+    }
+
     func openHelp(topic: String = HelpTopic.welcome.id) {
         helpTopicID = topic
-        showHelp = true
+        NotificationCenter.default.post(name: .hiltOpenHelp, object: topic)
     }
 
     // MARK: - Queue
@@ -139,7 +171,7 @@ final class AppState: ObservableObject {
         let ready = readyCount
         let blocked = blockedCount
         if blocked == 0 {
-            statusMessage = "\(ready) module\(ready == 1 ? "" : "s") ready. Choose an output folder, then Convert."
+            statusMessage = "\(ready) module\(ready == 1 ? "" : "s") ready. Choose a destination folder, then Convert."
         } else {
             statusMessage = "\(ready) ready, \(blocked) cannot be converted — see Reason in the table."
         }
@@ -180,10 +212,6 @@ final class AppState: ObservableObject {
 
     func requestConvert() {
         guard readyCount > 0, !isRunning else { return }
-        if requireOutputFolder && outputDirectory == nil {
-            showOutputConfirm = true
-            return
-        }
         if outputDirectory == nil {
             showOutputConfirm = true
             return
@@ -198,7 +226,11 @@ final class AppState: ObservableObject {
 
     func runConversion() async {
         isRunning = true
-        defer { isRunning = false }
+        conversionProgress = nil
+        defer {
+            isRunning = false
+            conversionProgress = nil
+        }
         results = []
 
         let convertible = queue.filter(\.isConvertible)
@@ -224,7 +256,13 @@ final class AppState: ObservableObject {
             )
         }
 
+        let total = convertible.count
+        var index = 0
         for item in convertible {
+            index += 1
+            conversionProgress = "Converting \(index) of \(total)…"
+            statusMessage = conversionProgress ?? statusMessage
+
             let url = item.url
             let scoped = url.startAccessingSecurityScopedResource()
             defer { if scoped { url.stopAccessingSecurityScopedResource() } }
@@ -265,11 +303,21 @@ final class AppState: ObservableObject {
         }
         let ok = collected.filter(\.success).count
         let fail = collected.filter { !$0.success }.count
-        if let dir = outputDirectory {
-            statusMessage = "Finished: \(ok) succeeded, \(fail) failed/skipped. Output: \(dir.path)"
+        if dryRun {
+            statusMessage = "Dry run finished: \(ok) would succeed, \(fail) failed/skipped. No files written."
+        } else if let dir = outputDirectory {
+            statusMessage =
+                "Finished: \(ok) succeeded, \(fail) failed/skipped. Show in Finder, then e-Sword X → File → Resources → Import…"
+            _ = dir
         } else {
             statusMessage = "Finished: \(ok) succeeded, \(fail) failed/skipped."
         }
+
+        NSAccessibility.post(
+            element: NSApp.mainWindow as Any,
+            notification: .announcementRequested,
+            userInfo: [.announcement: statusMessage, .priority: NSAccessibilityPriorityLevel.medium.rawValue]
+        )
     }
 
     static var allowedTypes: [UTType] {
@@ -281,4 +329,8 @@ final class AppState: ObservableObject {
         }
         return types
     }
+}
+
+extension Notification.Name {
+    static let hiltOpenHelp = Notification.Name("org.questy.hilt.openHelp")
 }
