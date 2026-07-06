@@ -74,19 +74,23 @@ public enum RTFToHTML {
         s = decodeRTFHex(s)
 
         // Common formatting — order matters for simple stack-less approach.
-        // Trailing space after a control word is an RTF delimiter and is consumed.
-        s = replaceControl(s, #"\\b0(?:\s|$)"#, "</b>")
-        s = replaceControl(s, #"\\b(?:\s|$)"#, "<b>")
-        s = replaceControl(s, #"\\i0(?:\s|$)"#, "</i>")
-        s = replaceControl(s, #"\\i(?:\s|$)"#, "<i>")
-        s = replaceControl(s, #"\\ulnone(?:\s|$)"#, "</u>")
-        s = replaceControl(s, #"\\ul0(?:\s|$)"#, "</u>")
-        s = replaceControl(s, #"\\ul(?:\s|$)"#, "<u>")
+        // RTF delimits control words with a trailing space; we consume it only for
+        // *opening* tags so closing tags keep the word-break space for the next text.
+        s = replaceControl(s, #"\\b0\s?"#, "</b>")
+        s = replaceControl(s, #"\\b\s"#, "<b>")
+        s = replaceControl(s, #"\\b(?![a-zA-Z0-9])"#, "<b>")
+        s = replaceControl(s, #"\\i0\s?"#, "</i>")
+        s = replaceControl(s, #"\\i\s"#, "<i>")
+        s = replaceControl(s, #"\\i(?![a-zA-Z0-9])"#, "<i>")
+        s = replaceControl(s, #"\\ulnone\s?"#, "</u>")
+        s = replaceControl(s, #"\\ul0\s?"#, "</u>")
+        s = replaceControl(s, #"\\ul\s"#, "<u>")
+        s = replaceControl(s, #"\\ul(?![a-zA-Z0-9])"#, "<u>")
 
         // Superscript (Strong's often use this)
-        s = replaceControl(s, #"\\nosupersub(?:\s|$)"#, "</sup>")
-        s = replaceControl(s, #"\\super(?:\s|$)"#, "<sup>")
-        s = replaceControl(s, #"\\sub(?:\s|$)"#, "<sub>")
+        s = replaceControl(s, #"\\nosupersub\s?"#, "</sup>")
+        s = replaceControl(s, #"\\super\s?"#, "<sup>")
+        s = replaceControl(s, #"\\sub\s?"#, "<sub>")
 
         // Red letter-ish color controls — map any \cfN to a span start; \cf0 ends
         // e-Sword often uses \cf2 or similar for Jesus' words.
