@@ -4,13 +4,18 @@ import UniformTypeIdentifiers
 import HiltCore
 
 struct ContentView: View {
-    @State private var inputURLs: [URL] = []
+    /// Inspected modules shown in the queue table (files expanded from folders).
+    @State private var queue: [ModuleInfo] = []
     @State private var outputDirectory: URL?
     @State private var results: [ConversionResult] = []
     @State private var isRunning = false
     @State private var overwrite = true
     @State private var dryRun = false
     @State private var statusLine = "Drop Windows e-Sword modules here, or click Add…"
+    @State private var selection = Set<ModuleInfo.ID>()
+
+    private var readyCount: Int { queue.filter(\.isConvertible).count }
+    private var blockedCount: Int { queue.filter { !$0.isConvertible }.count }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -20,11 +25,15 @@ struct ContentView: View {
             Divider()
             optionsBar
             Divider()
-            resultsList
+            moduleTable
+            if !results.isEmpty {
+                Divider()
+                conversionResults
+            }
             Divider()
             footer
         }
-        .frame(minWidth: 720, minHeight: 520)
+        .frame(minWidth: 860, minHeight: 580)
     }
 
     private var header: some View {
@@ -48,9 +57,9 @@ struct ContentView: View {
     }
 
     private var dropZone: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             Image(systemName: "square.and.arrow.down.on.square")
-                .font(.system(size: 36))
+                .font(.system(size: 32))
                 .foregroundStyle(.secondary)
             Text(statusLine)
                 .multilineTextAlignment(.center)
@@ -61,20 +70,17 @@ struct ContentView: View {
                 }
                 .keyboardShortcut("o", modifiers: [.command])
                 Button("Clear List") {
-                    inputURLs = []
+                    queue = []
                     results = []
+                    selection = []
                     statusLine = "Drop Windows e-Sword modules here, or click Add…"
                 }
-                .disabled(inputURLs.isEmpty && results.isEmpty)
-            }
-            if !inputURLs.isEmpty {
-                Text("\(inputURLs.count) item(s) queued")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                .disabled(queue.isEmpty && results.isEmpty)
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(28)
+        .padding(.vertical, 20)
+        .padding(.horizontal, 16)
         .background(Color.gray.opacity(0.06))
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
             handleDrop(providers)
@@ -95,56 +101,138 @@ struct ContentView: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .foregroundStyle(.secondary)
-                    .frame(maxWidth: 280, alignment: .trailing)
+                    .frame(maxWidth: 240, alignment: .trailing)
             }
-            Button(isRunning ? "Converting…" : "Convert") {
+            Button(isRunning ? "Converting…" : "Convert Ready") {
                 Task { await runConversion() }
             }
             .keyboardShortcut(.defaultAction)
-            .disabled(inputURLs.isEmpty || isRunning)
+            .disabled(readyCount == 0 || isRunning)
         }
         .padding(12)
     }
 
-    private var resultsList: some View {
-        Group {
-            if results.isEmpty {
-                VStack(spacing: 10) {
-                    Image(systemName: "list.bullet.rectangle")
-                        .font(.system(size: 40))
+    /// Primary table: every added/dropped module with inspect status.
+    private var moduleTable: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("Modules")
+                    .font(.headline)
+                Spacer()
+                if !queue.isEmpty {
+                    Text("\(readyCount) ready · \(blockedCount) blocked · \(queue.count) total")
+                        .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text("No results yet")
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+
+            if queue.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "tablecells")
+                        .font(.system(size: 36))
+                        .foregroundStyle(.secondary)
+                    Text("No modules in the queue")
                         .font(.headline)
-                    Text("Supported: .bblx .cmtx .dctx .topx → Mac *i modules")
+                    Text("Add or drop .bblx / .cmtx / .dctx / .topx files. Each row shows type, size, and whether Hilt can read it.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                List(results.indices, id: \.self) { idx in
-                    let r = results[idx]
-                    HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: r.success ? "checkmark.circle.fill" : "xmark.octagon.fill")
-                            .foregroundStyle(r.success ? Color.green : Color.red)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(r.sourceURL.lastPathComponent)
-                                .font(.body.weight(.semibold))
-                            Text(r.message)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            if let out = r.outputURL, r.success {
-                                Text(out.path)
-                                    .font(.system(.caption2, design: .monospaced))
-                                    .foregroundStyle(.secondary)
-                            }
+                Table(queue, selection: $selection) {
+                    TableColumn("Status") { item in
+                        HStack(spacing: 6) {
+                            Image(systemName: statusIcon(item))
+                                .foregroundStyle(statusColor(item))
+                            Text(item.statusLabel)
+                                .font(.caption.weight(.semibold))
                         }
                     }
-                    .padding(.vertical, 2)
+                    .width(min: 100, ideal: 110, max: 130)
+
+                    TableColumn("File") { item in
+                        Text(item.fileName)
+                            .lineLimit(1)
+                            .help(item.url.path)
+                    }
+                    .width(min: 120, ideal: 180)
+
+                    TableColumn("Type") { item in
+                        Text(item.typeDisplay)
+                    }
+                    .width(min: 80, ideal: 100, max: 120)
+
+                    TableColumn("Size") { item in
+                        Text(item.formattedSize)
+                            .font(.system(.caption, design: .monospaced))
+                    }
+                    .width(min: 60, ideal: 70, max: 90)
+
+                    TableColumn("Title / Abbr") { item in
+                        Text(titleCell(item))
+                            .lineLimit(1)
+                    }
+                    .width(min: 100, ideal: 140)
+
+                    TableColumn("Rows") { item in
+                        Text(item.rowCount.map(String.init) ?? "—")
+                            .font(.system(.caption, design: .monospaced))
+                    }
+                    .width(min: 50, ideal: 60, max: 70)
+
+                    TableColumn("Format") { item in
+                        Text(item.contentFormat ?? "—")
+                            .lineLimit(1)
+                    }
+                    .width(min: 100, ideal: 150)
+
+                    TableColumn("Target") { item in
+                        Text(item.targetExtension.isEmpty ? "—" : ".\(item.targetExtension)")
+                            .font(.system(.caption, design: .monospaced))
+                    }
+                    .width(min: 50, ideal: 60, max: 70)
+
+                    TableColumn("Details / reason") { item in
+                        Text(item.detail)
+                            .font(.caption)
+                            .foregroundStyle(item.isConvertible ? Color.secondary : Color.primary)
+                            .lineLimit(3)
+                            .help(item.detail)
+                    }
+                    .width(min: 180, ideal: 280)
                 }
+                .frame(maxHeight: .infinity)
             }
         }
-        .frame(maxHeight: .infinity)
+        .frame(minHeight: 220)
+    }
+
+    private var conversionResults: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Last conversion")
+                .font(.headline)
+                .padding(.horizontal, 12)
+                .padding(.top, 8)
+            List(results.indices, id: \.self) { idx in
+                let r = results[idx]
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: r.success ? "checkmark.circle.fill" : "xmark.octagon.fill")
+                        .foregroundStyle(r.success ? Color.green : Color.red)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(r.sourceURL.lastPathComponent)
+                            .font(.body.weight(.semibold))
+                        Text(r.message)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .frame(maxHeight: 140)
+        }
     }
 
     private var footer: some View {
@@ -164,7 +252,27 @@ struct ContentView: View {
         .padding(12)
     }
 
-    // MARK: - NSOpenPanel (reliable on macOS; dual .fileImporter is flaky)
+    // MARK: - Table helpers
+
+    private func statusIcon(_ item: ModuleInfo) -> String {
+        if item.isConvertible { return "checkmark.circle.fill" }
+        switch item.statusLabel {
+        case "Unsupported", "Not yet supported": return "questionmark.circle.fill"
+        case "Missing", "Empty folder": return "tray.fill"
+        default: return "xmark.octagon.fill"
+        }
+    }
+
+    private func statusColor(_ item: ModuleInfo) -> Color {
+        item.isConvertible ? .green : .orange
+    }
+
+    private func titleCell(_ item: ModuleInfo) -> String {
+        let parts = [item.abbreviation, item.title].compactMap { $0 }.filter { !$0.isEmpty }
+        return parts.isEmpty ? "—" : parts.joined(separator: " · ")
+    }
+
+    // MARK: - NSOpenPanel
 
     private func presentModuleOpenPanel() {
         let panel = NSOpenPanel()
@@ -172,22 +280,19 @@ struct ContentView: View {
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = true
         panel.canCreateDirectories = false
-        panel.treatsFilePackagesAsDirectories = false
         panel.message = "Choose unlocked e-Sword modules or a folder of modules"
         panel.prompt = "Add"
         panel.allowedContentTypes = Self.allowedTypes
 
-        // Present modally on the key window — works under App Sandbox.
-        guard let window = NSApp.keyWindow ?? NSApp.windows.first else {
-            // Fallback: runModal still works without an explicit parent.
-            if panel.runModal() == .OK {
-                addInputs(panel.urls)
-            }
-            return
-        }
-        panel.beginSheetModal(for: window) { response in
+        let present: (NSApplication.ModalResponse) -> Void = { response in
             guard response == .OK else { return }
             addInputs(panel.urls)
+        }
+
+        if let window = NSApp.keyWindow ?? NSApp.windows.first {
+            panel.beginSheetModal(for: window, completionHandler: present)
+        } else {
+            present(panel.runModal())
         }
     }
 
@@ -200,38 +305,59 @@ struct ContentView: View {
         panel.message = "Choose a folder for converted modules"
         panel.prompt = "Select"
 
-        guard let window = NSApp.keyWindow ?? NSApp.windows.first else {
-            if panel.runModal() == .OK, let url = panel.url {
-                outputDirectory = url
-                statusLine = "Output folder: \(url.path)"
-            }
-            return
-        }
-        panel.beginSheetModal(for: window) { response in
+        let present: (NSApplication.ModalResponse) -> Void = { response in
             guard response == .OK, let url = panel.url else { return }
+            _ = url.startAccessingSecurityScopedResource()
             outputDirectory = url
             statusLine = "Output folder: \(url.path)"
         }
+
+        if let window = NSApp.keyWindow ?? NSApp.windows.first {
+            panel.beginSheetModal(for: window, completionHandler: present)
+        } else {
+            present(panel.runModal())
+        }
     }
 
-    // MARK: - Actions
+    // MARK: - Queue
 
     private func addInputs(_ urls: [URL]) {
         guard !urls.isEmpty else { return }
-        for url in urls where !inputURLs.contains(url) {
-            // Keep security-scoped access for the life of the session item.
+        for url in urls {
             _ = url.startAccessingSecurityScopedResource()
-            inputURLs.append(url)
         }
-        statusLine = "\(inputURLs.count) item(s) ready — choose output and Convert."
+
+        let inspected = ModuleInspector.inspectInputs(urls, recursiveFolders: true)
+        // Merge by URL; replace existing rows for the same file.
+        var byURL = Dictionary(uniqueKeysWithValues: queue.map { ($0.url, $0) })
+        for info in inspected {
+            byURL[info.url] = info
+        }
+        queue = byURL.values.sorted {
+            $0.fileName.localizedCaseInsensitiveCompare($1.fileName) == .orderedAscending
+        }
+
+        let ready = queue.filter(\.isConvertible).count
+        let blocked = queue.filter { !$0.isConvertible }.count
+        if blocked == 0 {
+            statusLine = "\(ready) module(s) ready to convert."
+        } else {
+            statusLine = "\(ready) ready, \(blocked) cannot be converted — see Details / reason."
+        }
     }
 
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
         var handled = false
+        let group = DispatchGroup()
+        var urls: [URL] = []
+        let lock = NSLock()
+
         for provider in providers {
             if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
                 handled = true
+                group.enter()
                 provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
+                    defer { group.leave() }
                     var url: URL?
                     if let data = item as? Data {
                         url = URL(dataRepresentation: data, relativeTo: nil)
@@ -239,10 +365,16 @@ struct ContentView: View {
                         url = u
                     }
                     if let url {
-                        DispatchQueue.main.async { addInputs([url]) }
+                        lock.lock()
+                        urls.append(url)
+                        lock.unlock()
                     }
                 }
             }
+        }
+
+        group.notify(queue: .main) {
+            addInputs(urls)
         }
         return handled
     }
@@ -253,22 +385,38 @@ struct ContentView: View {
         defer { isRunning = false }
         results = []
 
+        let convertible = queue.filter(\.isConvertible)
+        guard !convertible.isEmpty else {
+            statusLine = "Nothing ready to convert."
+            return
+        }
+
         let options = ConversionOptions(overwrite: overwrite, dryRun: dryRun, force: false)
         let converter = ModuleConverter(options: options)
-
         var collected: [ConversionResult] = []
-        for url in inputURLs {
+
+        // Also record blocked items as skipped with their inspect reason.
+        for item in queue where !item.isConvertible {
+            collected.append(
+                ConversionResult(
+                    sourceURL: item.url,
+                    moduleType: item.moduleType,
+                    title: item.title,
+                    abbreviation: item.abbreviation,
+                    success: false,
+                    message: "Skipped — \(item.statusLabel): \(item.detail)"
+                )
+            )
+        }
+
+        for item in convertible {
+            let url = item.url
             let scoped = url.startAccessingSecurityScopedResource()
             defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-
-            var isDir: ObjCBool = false
-            FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir)
 
             let out: URL
             if let outputDirectory {
                 out = outputDirectory
-            } else if isDir.boolValue {
-                out = url.appendingPathComponent("hilt-output")
             } else {
                 out = url.deletingLastPathComponent().appendingPathComponent("hilt-output")
             }
@@ -276,31 +424,34 @@ struct ContentView: View {
                 outputDirectory = out
             }
 
-            // Ensure output folder is accessible under sandbox when user-selected.
             let outScoped = out.startAccessingSecurityScopedResource()
             defer { if outScoped { out.stopAccessingSecurityScopedResource() } }
 
-            if isDir.boolValue {
-                collected.append(contentsOf: converter.convertDirectory(url, outputDirectory: out, recursive: true))
-            } else {
-                do {
-                    collected.append(try converter.convert(file: url, outputDirectory: out))
-                } catch {
-                    collected.append(
-                        ConversionResult(
-                            sourceURL: url,
-                            moduleType: ModuleType.from(fileExtension: url.pathExtension),
-                            success: false,
-                            message: error.localizedDescription
-                        )
+            do {
+                try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+                collected.append(try converter.convert(file: url, outputDirectory: out))
+            } catch {
+                collected.append(
+                    ConversionResult(
+                        sourceURL: url,
+                        moduleType: item.moduleType,
+                        title: item.title,
+                        abbreviation: item.abbreviation,
+                        success: false,
+                        message: error.localizedDescription
                     )
-                }
+                )
             }
         }
-        results = collected
+
+        // Re-inspect after convert so table still reflects source state.
+        results = collected.sorted {
+            $0.sourceURL.lastPathComponent.localizedCaseInsensitiveCompare($1.sourceURL.lastPathComponent)
+                == .orderedAscending
+        }
         let ok = collected.filter(\.success).count
-        let fail = collected.count - ok
-        statusLine = "Finished: \(ok) succeeded, \(fail) failed."
+        let fail = collected.filter { !$0.success }.count
+        statusLine = "Finished: \(ok) succeeded, \(fail) failed/skipped."
     }
 
     private static var allowedTypes: [UTType] {
