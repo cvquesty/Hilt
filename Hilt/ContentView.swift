@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 import HiltCore
@@ -10,8 +11,6 @@ struct ContentView: View {
     @State private var overwrite = true
     @State private var dryRun = false
     @State private var statusLine = "Drop Windows e-Sword modules here, or click Add…"
-    @State private var showImporter = false
-    @State private var showOutputPicker = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -26,24 +25,6 @@ struct ContentView: View {
             footer
         }
         .frame(minWidth: 720, minHeight: 520)
-        .fileImporter(
-            isPresented: $showImporter,
-            allowedContentTypes: Self.allowedTypes,
-            allowsMultipleSelection: true
-        ) { result in
-            if case .success(let urls) = result {
-                addInputs(urls)
-            }
-        }
-        .fileImporter(
-            isPresented: $showOutputPicker,
-            allowedContentTypes: [.folder],
-            allowsMultipleSelection: false
-        ) { result in
-            if case .success(let urls) = result, let url = urls.first {
-                outputDirectory = url
-            }
-        }
     }
 
     private var header: some View {
@@ -60,7 +41,7 @@ struct ContentView: View {
             }
             Spacer()
             Text("v\(HiltVersion.marketing)")
-                .font(.caption.monospaced())
+                .font(.system(.caption, design: .monospaced))
                 .foregroundStyle(.secondary)
         }
         .padding(16)
@@ -75,7 +56,10 @@ struct ContentView: View {
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
             HStack {
-                Button("Add Modules…") { showImporter = true }
+                Button("Add Modules…") {
+                    presentModuleOpenPanel()
+                }
+                .keyboardShortcut("o", modifiers: [.command])
                 Button("Clear List") {
                     inputURLs = []
                     results = []
@@ -102,7 +86,9 @@ struct ContentView: View {
             Toggle("Overwrite existing", isOn: $overwrite)
             Toggle("Dry run", isOn: $dryRun)
             Spacer()
-            Button("Output Folder…") { showOutputPicker = true }
+            Button("Output Folder…") {
+                presentOutputFolderPanel()
+            }
             if let outputDirectory {
                 Text(outputDirectory.path)
                     .font(.caption)
@@ -167,7 +153,9 @@ struct ContentView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Spacer()
-            if results.contains(where: \.success), let dir = outputDirectory ?? results.compactMap(\.outputURL).first?.deletingLastPathComponent() {
+            if results.contains(where: \.success),
+               let dir = outputDirectory
+                ?? results.compactMap(\.outputURL).first?.deletingLastPathComponent() {
                 Button("Reveal Output") {
                     NSWorkspace.shared.open(dir)
                 }
@@ -176,15 +164,64 @@ struct ContentView: View {
         .padding(12)
     }
 
+    // MARK: - NSOpenPanel (reliable on macOS; dual .fileImporter is flaky)
+
+    private func presentModuleOpenPanel() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = true
+        panel.canCreateDirectories = false
+        panel.treatsFilePackagesAsDirectories = false
+        panel.message = "Choose unlocked e-Sword modules or a folder of modules"
+        panel.prompt = "Add"
+        panel.allowedContentTypes = Self.allowedTypes
+
+        // Present modally on the key window — works under App Sandbox.
+        guard let window = NSApp.keyWindow ?? NSApp.windows.first else {
+            // Fallback: runModal still works without an explicit parent.
+            if panel.runModal() == .OK {
+                addInputs(panel.urls)
+            }
+            return
+        }
+        panel.beginSheetModal(for: window) { response in
+            guard response == .OK else { return }
+            addInputs(panel.urls)
+        }
+    }
+
+    private func presentOutputFolderPanel() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.canCreateDirectories = true
+        panel.message = "Choose a folder for converted modules"
+        panel.prompt = "Select"
+
+        guard let window = NSApp.keyWindow ?? NSApp.windows.first else {
+            if panel.runModal() == .OK, let url = panel.url {
+                outputDirectory = url
+                statusLine = "Output folder: \(url.path)"
+            }
+            return
+        }
+        panel.beginSheetModal(for: window) { response in
+            guard response == .OK, let url = panel.url else { return }
+            outputDirectory = url
+            statusLine = "Output folder: \(url.path)"
+        }
+    }
+
     // MARK: - Actions
 
     private func addInputs(_ urls: [URL]) {
-        for url in urls {
-            let scoped = url.startAccessingSecurityScopedResource()
-            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-            if !inputURLs.contains(url) {
-                inputURLs.append(url)
-            }
+        guard !urls.isEmpty else { return }
+        for url in urls where !inputURLs.contains(url) {
+            // Keep security-scoped access for the life of the session item.
+            _ = url.startAccessingSecurityScopedResource()
+            inputURLs.append(url)
         }
         statusLine = "\(inputURLs.count) item(s) ready — choose output and Convert."
     }
@@ -239,6 +276,10 @@ struct ContentView: View {
                 outputDirectory = out
             }
 
+            // Ensure output folder is accessible under sandbox when user-selected.
+            let outScoped = out.startAccessingSecurityScopedResource()
+            defer { if outScoped { out.stopAccessingSecurityScopedResource() } }
+
             if isDir.boolValue {
                 collected.append(contentsOf: converter.convertDirectory(url, outputDirectory: out, recursive: true))
             } else {
@@ -263,7 +304,7 @@ struct ContentView: View {
     }
 
     private static var allowedTypes: [UTType] {
-        var types: [UTType] = [.item, .data, .folder]
+        var types: [UTType] = [.item, .data, .folder, .content]
         for ext in ["bblx", "cmtx", "dctx", "topx", "bbli", "cmti", "dcti", "topi"] {
             if let t = UTType(filenameExtension: ext) {
                 types.append(t)
