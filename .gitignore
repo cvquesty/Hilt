@@ -14,4 +14,3 @@ DerivedData/
 .hilt-output/
 hilt-output/
 /build/
-Assets/*.png
