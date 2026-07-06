@@ -4,153 +4,223 @@ import UniformTypeIdentifiers
 import HiltCore
 
 struct ContentView: View {
-    /// Inspected modules shown in the queue table (files expanded from folders).
-    @State private var queue: [ModuleInfo] = []
-    @State private var outputDirectory: URL?
-    @State private var results: [ConversionResult] = []
-    @State private var isRunning = false
-    @State private var overwrite = true
-    @State private var dryRun = false
-    @State private var statusLine = "Drop Windows e-Sword modules here, or click Add…"
-    @State private var selection = Set<ModuleInfo.ID>()
-
-    private var readyCount: Int { queue.filter(\.isConvertible).count }
-    private var blockedCount: Int { queue.filter { !$0.isConvertible }.count }
+    @EnvironmentObject private var state: AppState
 
     var body: some View {
         VStack(spacing: 0) {
-            header
+            outputBanner
             Divider()
             dropZone
             Divider()
-            optionsBar
-            Divider()
             moduleTable
-            if !results.isEmpty {
+            if !state.results.isEmpty {
                 Divider()
                 conversionResults
             }
             Divider()
-            footer
+            statusBar
         }
-        .frame(minWidth: 860, minHeight: 580)
+        .frame(minWidth: 900, minHeight: 600)
+        .toolbar { toolbarContent }
+        .navigationTitle("Hilt")
+        .sheet(isPresented: $state.showHelp) {
+            HelpView(selectedTopicID: $state.helpTopicID)
+                .frame(minWidth: 700, minHeight: 460)
+        }
+        .alert("Output folder not set", isPresented: $state.showOutputConfirm) {
+            Button("Choose Folder…") {
+                state.showOutputConfirm = false
+                state.presentOutputFolderPanel()
+            }
+            Button("Use hilt-output beside sources") {
+                state.confirmDefaultOutputAndConvert()
+            }
+            Button("Cancel", role: .cancel) {
+                state.showOutputConfirm = false
+            }
+        } message: {
+            Text("Choose a folder for all converted modules, or let Hilt create a “hilt-output” folder next to each source file.")
+        }
     }
 
-    private var header: some View {
-        HStack(spacing: 14) {
-            Image(systemName: "shield.lefthalf.filled")
-                .font(.system(size: 28, weight: .semibold))
-                .foregroundStyle(.tint)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Hilt")
-                    .font(.title2.weight(.bold))
-                Text("Mac-native conversion for e-Sword X")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+    // MARK: - Toolbar (HIG: primary actions in chrome, not a fake header)
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItemGroup(placement: .primaryAction) {
+            Button {
+                state.presentModuleOpenPanel()
+            } label: {
+                Label("Add Modules…", systemImage: "plus")
             }
-            Spacer()
-            Text("v\(HiltVersion.marketing)")
-                .font(.system(.caption, design: .monospaced))
-                .foregroundStyle(.secondary)
+            .help("Add unlocked e-Sword modules or a folder (⌘O)")
+            .accessibilityHint("Opens a panel to choose module files or a folder")
+
+            Button("Clear") {
+                state.clearQueue()
+            }
+            .disabled(state.queue.isEmpty && state.results.isEmpty)
+            .help("Remove all modules from the queue")
         }
-        .padding(16)
+
+        ToolbarItemGroup(placement: .automatic) {
+            Toggle("Overwrite", isOn: $state.overwrite)
+                .help("Replace existing files with the same name in the output folder")
+            Toggle("Dry run", isOn: $state.dryRun)
+                .help("Report what would be written without creating files")
+        }
+
+        ToolbarItem(placement: .confirmationAction) {
+            Button {
+                state.requestConvert()
+            } label: {
+                if state.isRunning {
+                    Text("Converting…")
+                } else if state.readyCount > 0 {
+                    Text("Convert \(state.readyCount)")
+                } else {
+                    Text("Convert")
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .keyboardShortcut(.defaultAction)
+            .disabled(state.readyCount == 0 || state.isRunning)
+            .help("Convert ready modules to e-Sword X format (⌘↩)")
+            .accessibilityHint("Writes converted modules to the output folder")
+        }
     }
+
+    // MARK: - Output banner (always visible)
+
+    private var outputBanner: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Image(systemName: "folder")
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Output folder")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text(state.outputPathDescription)
+                    .font(.system(.body, design: .default))
+                    .lineLimit(2)
+                    .truncationMode(.middle)
+                    .help(state.outputDirectory?.path ?? state.outputPathDescription)
+                    .accessibilityLabel("Output folder")
+                    .accessibilityValue(state.outputPathDescription)
+            }
+
+            Spacer(minLength: 8)
+
+            Button("Choose Output Folder…") {
+                state.presentOutputFolderPanel()
+            }
+            .help("Pick where converted .bbli and related files are written")
+
+            if state.hasChosenOutput {
+                Button("Reveal") {
+                    state.revealOutput()
+                }
+                .help("Show the output folder in Finder")
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Color(nsColor: .controlBackgroundColor))
+    }
+
+    // MARK: - Drop zone
 
     private var dropZone: some View {
         VStack(spacing: 10) {
-            Image(systemName: "square.and.arrow.down.on.square")
-                .font(.system(size: 32))
-                .foregroundStyle(.secondary)
-            Text(statusLine)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
-            HStack {
-                Button("Add Modules…") {
-                    presentModuleOpenPanel()
-                }
-                .keyboardShortcut("o", modifiers: [.command])
-                Button("Clear List") {
-                    queue = []
-                    results = []
-                    selection = []
-                    statusLine = "Drop Windows e-Sword modules here, or click Add…"
-                }
-                .disabled(queue.isEmpty && results.isEmpty)
+            Image(systemName: "arrow.down.doc")
+                .font(.system(size: state.queue.isEmpty ? 36 : 22))
+                .foregroundStyle(state.isDropTargeted ? Color.accentColor : Color.secondary)
+                .accessibilityHidden(true)
+
+            if state.queue.isEmpty {
+                Text("Drop modules here")
+                    .font(.title3.weight(.semibold))
+                Text("Unlocked Windows e-Sword files (.bblx, .cmtx, .dctx, .topx) or a folder of modules.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                Text("Converted files are written to the output folder above — not back onto your originals.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+            } else {
+                Text("Drop more modules here, or use Add Modules…")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 20)
+        .padding(.vertical, state.queue.isEmpty ? 28 : 14)
         .padding(.horizontal, 16)
-        .background(Color.gray.opacity(0.06))
-        .onDrop(of: [.fileURL], isTargeted: nil) { providers in
-            handleDrop(providers)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(state.isDropTargeted ? Color.accentColor.opacity(0.08) : Color(nsColor: .windowBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(
+                    state.isDropTargeted ? Color.accentColor : Color.secondary.opacity(0.35),
+                    style: StrokeStyle(lineWidth: state.isDropTargeted ? 2 : 1, dash: [7, 5])
+                )
+        )
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .onDrop(of: [.fileURL], isTargeted: $state.isDropTargeted) { providers in
+            state.handleDrop(providers)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Module drop zone")
+        .accessibilityHint("Drop e-Sword module files or folders here to add them to the queue")
     }
 
-    private var optionsBar: some View {
-        HStack(spacing: 16) {
-            Toggle("Overwrite existing", isOn: $overwrite)
-            Toggle("Dry run", isOn: $dryRun)
-            Spacer()
-            Button("Output Folder…") {
-                presentOutputFolderPanel()
-            }
-            if let outputDirectory {
-                Text(outputDirectory.path)
-                    .font(.caption)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: 240, alignment: .trailing)
-            }
-            Button(isRunning ? "Converting…" : "Convert Ready") {
-                Task { await runConversion() }
-            }
-            .keyboardShortcut(.defaultAction)
-            .disabled(readyCount == 0 || isRunning)
-        }
-        .padding(12)
-    }
+    // MARK: - Table
 
-    /// Primary table: every added/dropped module with inspect status.
     private var moduleTable: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text("Modules")
                     .font(.headline)
                 Spacer()
-                if !queue.isEmpty {
-                    Text("\(readyCount) ready · \(blockedCount) blocked · \(queue.count) total")
+                if !state.queue.isEmpty {
+                    Text("\(state.readyCount) ready · \(state.blockedCount) blocked · \(state.queue.count) total")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 16)
             .padding(.vertical, 8)
 
-            if queue.isEmpty {
+            if state.queue.isEmpty {
                 VStack(spacing: 8) {
-                    Image(systemName: "tablecells")
-                        .font(.system(size: 36))
-                        .foregroundStyle(.secondary)
-                    Text("No modules in the queue")
+                    Text("No modules in the queue yet")
                         .font(.headline)
-                    Text("Add or drop .bblx / .cmtx / .dctx / .topx files. Each row shows type, size, and whether Hilt can read it.")
-                        .font(.caption)
+                    Text("Use the drop area above or choose Add Modules… Each row will show whether Hilt can convert the file and why if it cannot.")
+                        .font(.callout)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal, 24)
+                        .padding(.horizontal, 32)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                Table(queue, selection: $selection) {
+                Table(state.queue, selection: $state.selection) {
                     TableColumn("Status") { item in
                         HStack(spacing: 6) {
                             Image(systemName: statusIcon(item))
                                 .foregroundStyle(statusColor(item))
+                                .accessibilityHidden(true)
                             Text(item.statusLabel)
                                 .font(.caption.weight(.semibold))
                         }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel(item.statusLabel)
                     }
                     .width(min: 100, ideal: 110, max: 130)
 
@@ -172,7 +242,7 @@ struct ContentView: View {
                     }
                     .width(min: 60, ideal: 70, max: 90)
 
-                    TableColumn("Title / Abbr") { item in
+                    TableColumn("Title") { item in
                         Text(titleCell(item))
                             .lineLimit(1)
                     }
@@ -196,7 +266,7 @@ struct ContentView: View {
                     }
                     .width(min: 50, ideal: 60, max: 70)
 
-                    TableColumn("Details / reason") { item in
+                    TableColumn("Reason") { item in
                         Text(item.detail)
                             .font(.caption)
                             .foregroundStyle(item.isConvertible ? Color.secondary : Color.primary)
@@ -208,26 +278,28 @@ struct ContentView: View {
                 .frame(maxHeight: .infinity)
             }
         }
-        .frame(minHeight: 220)
+        .frame(minHeight: 200)
     }
 
     private var conversionResults: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Last conversion")
                 .font(.headline)
-                .padding(.horizontal, 12)
+                .padding(.horizontal, 16)
                 .padding(.top, 8)
-            List(results.indices, id: \.self) { idx in
-                let r = results[idx]
+            List(state.results.indices, id: \.self) { idx in
+                let r = state.results[idx]
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: r.success ? "checkmark.circle.fill" : "xmark.octagon.fill")
                         .foregroundStyle(r.success ? Color.green : Color.red)
+                        .accessibilityLabel(r.success ? "Succeeded" : "Failed")
                     VStack(alignment: .leading, spacing: 2) {
                         Text(r.sourceURL.lastPathComponent)
                             .font(.body.weight(.semibold))
                         Text(r.message)
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
                     }
                 }
             }
@@ -235,24 +307,32 @@ struct ContentView: View {
         }
     }
 
-    private var footer: some View {
-        HStack {
-            Text("Unlocked modules only · Import in e-Sword X via File → Resources → Import…")
+    private var statusBar: some View {
+        HStack(spacing: 12) {
+            Text(state.statusMessage)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Spacer()
-            if results.contains(where: \.success),
-               let dir = outputDirectory
-                ?? results.compactMap(\.outputURL).first?.deletingLastPathComponent() {
-                Button("Reveal Output") {
-                    NSWorkspace.shared.open(dir)
+                .lineLimit(2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text("Unlocked modules only · After convert: e-Sword X → File → Resources → Import…")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .lineLimit(1)
+
+            if state.results.contains(where: \.success) || state.hasChosenOutput {
+                Button("Reveal in Finder") {
+                    state.revealOutput()
                 }
+                .controlSize(.small)
             }
         }
-        .padding(12)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 
-    // MARK: - Table helpers
+    // MARK: - Helpers
 
     private func statusIcon(_ item: ModuleInfo) -> String {
         if item.isConvertible { return "checkmark.circle.fill" }
@@ -270,197 +350,5 @@ struct ContentView: View {
     private func titleCell(_ item: ModuleInfo) -> String {
         let parts = [item.abbreviation, item.title].compactMap { $0 }.filter { !$0.isEmpty }
         return parts.isEmpty ? "—" : parts.joined(separator: " · ")
-    }
-
-    // MARK: - NSOpenPanel
-
-    private func presentModuleOpenPanel() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = true
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = true
-        panel.canCreateDirectories = false
-        panel.message = "Choose unlocked e-Sword modules or a folder of modules"
-        panel.prompt = "Add"
-        panel.allowedContentTypes = Self.allowedTypes
-
-        let present: (NSApplication.ModalResponse) -> Void = { response in
-            guard response == .OK else { return }
-            addInputs(panel.urls)
-        }
-
-        if let window = NSApp.keyWindow ?? NSApp.windows.first {
-            panel.beginSheetModal(for: window, completionHandler: present)
-        } else {
-            present(panel.runModal())
-        }
-    }
-
-    private func presentOutputFolderPanel() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.canCreateDirectories = true
-        panel.message = "Choose a folder for converted modules"
-        panel.prompt = "Select"
-
-        let present: (NSApplication.ModalResponse) -> Void = { response in
-            guard response == .OK, let url = panel.url else { return }
-            _ = url.startAccessingSecurityScopedResource()
-            outputDirectory = url
-            statusLine = "Output folder: \(url.path)"
-        }
-
-        if let window = NSApp.keyWindow ?? NSApp.windows.first {
-            panel.beginSheetModal(for: window, completionHandler: present)
-        } else {
-            present(panel.runModal())
-        }
-    }
-
-    // MARK: - Queue
-
-    private func addInputs(_ urls: [URL]) {
-        guard !urls.isEmpty else { return }
-        for url in urls {
-            _ = url.startAccessingSecurityScopedResource()
-        }
-
-        let inspected = ModuleInspector.inspectInputs(urls, recursiveFolders: true)
-        // Merge by URL; replace existing rows for the same file.
-        var byURL = Dictionary(uniqueKeysWithValues: queue.map { ($0.url, $0) })
-        for info in inspected {
-            byURL[info.url] = info
-        }
-        queue = byURL.values.sorted {
-            $0.fileName.localizedCaseInsensitiveCompare($1.fileName) == .orderedAscending
-        }
-
-        let ready = queue.filter(\.isConvertible).count
-        let blocked = queue.filter { !$0.isConvertible }.count
-        if blocked == 0 {
-            statusLine = "\(ready) module(s) ready to convert."
-        } else {
-            statusLine = "\(ready) ready, \(blocked) cannot be converted — see Details / reason."
-        }
-    }
-
-    private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
-        var handled = false
-        let group = DispatchGroup()
-        var urls: [URL] = []
-        let lock = NSLock()
-
-        for provider in providers {
-            if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
-                handled = true
-                group.enter()
-                provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
-                    defer { group.leave() }
-                    var url: URL?
-                    if let data = item as? Data {
-                        url = URL(dataRepresentation: data, relativeTo: nil)
-                    } else if let u = item as? URL {
-                        url = u
-                    }
-                    if let url {
-                        lock.lock()
-                        urls.append(url)
-                        lock.unlock()
-                    }
-                }
-            }
-        }
-
-        group.notify(queue: .main) {
-            addInputs(urls)
-        }
-        return handled
-    }
-
-    @MainActor
-    private func runConversion() async {
-        isRunning = true
-        defer { isRunning = false }
-        results = []
-
-        let convertible = queue.filter(\.isConvertible)
-        guard !convertible.isEmpty else {
-            statusLine = "Nothing ready to convert."
-            return
-        }
-
-        let options = ConversionOptions(overwrite: overwrite, dryRun: dryRun, force: false)
-        let converter = ModuleConverter(options: options)
-        var collected: [ConversionResult] = []
-
-        // Also record blocked items as skipped with their inspect reason.
-        for item in queue where !item.isConvertible {
-            collected.append(
-                ConversionResult(
-                    sourceURL: item.url,
-                    moduleType: item.moduleType,
-                    title: item.title,
-                    abbreviation: item.abbreviation,
-                    success: false,
-                    message: "Skipped — \(item.statusLabel): \(item.detail)"
-                )
-            )
-        }
-
-        for item in convertible {
-            let url = item.url
-            let scoped = url.startAccessingSecurityScopedResource()
-            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-
-            let out: URL
-            if let outputDirectory {
-                out = outputDirectory
-            } else {
-                out = url.deletingLastPathComponent().appendingPathComponent("hilt-output")
-            }
-            if outputDirectory == nil {
-                outputDirectory = out
-            }
-
-            let outScoped = out.startAccessingSecurityScopedResource()
-            defer { if outScoped { out.stopAccessingSecurityScopedResource() } }
-
-            do {
-                try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
-                collected.append(try converter.convert(file: url, outputDirectory: out))
-            } catch {
-                collected.append(
-                    ConversionResult(
-                        sourceURL: url,
-                        moduleType: item.moduleType,
-                        title: item.title,
-                        abbreviation: item.abbreviation,
-                        success: false,
-                        message: error.localizedDescription
-                    )
-                )
-            }
-        }
-
-        // Re-inspect after convert so table still reflects source state.
-        results = collected.sorted {
-            $0.sourceURL.lastPathComponent.localizedCaseInsensitiveCompare($1.sourceURL.lastPathComponent)
-                == .orderedAscending
-        }
-        let ok = collected.filter(\.success).count
-        let fail = collected.filter { !$0.success }.count
-        statusLine = "Finished: \(ok) succeeded, \(fail) failed/skipped."
-    }
-
-    private static var allowedTypes: [UTType] {
-        var types: [UTType] = [.item, .data, .folder, .content]
-        for ext in ["bblx", "cmtx", "dctx", "topx", "bbli", "cmti", "dcti", "topi"] {
-            if let t = UTType(filenameExtension: ext) {
-                types.append(t)
-            }
-        }
-        return types
     }
 }

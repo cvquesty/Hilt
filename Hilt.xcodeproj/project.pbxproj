@@ -11,6 +11,9 @@
 		A10000000000000000000021 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000021 /* ContentView.swift */; };
 		A10000000000000000000022 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000022 /* Assets.xcassets */; };
 		A10000000000000000000041 /* HiltCore in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000042 /* HiltCore */; };
+		C10000000000000000000001 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000001 /* AppState.swift */; };
+		C10000000000000000000002 /* HelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000002 /* HelpView.swift */; };
+		C10000000000000000000003 /* HelpContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000003 /* HelpContent.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -20,6 +23,9 @@
 		B10000000000000000000022 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B10000000000000000000023 /* Hilt.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Hilt.entitlements; sourceTree = "<group>"; };
 		B10000000000000000000024 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		D10000000000000000000001 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		D10000000000000000000002 /* HelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpView.swift; sourceTree = "<group>"; };
+		D10000000000000000000003 /* HelpContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpContent.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -55,6 +61,9 @@
 			children = (
 				B10000000000000000000020 /* HiltApp.swift */,
 				B10000000000000000000021 /* ContentView.swift */,
+				D10000000000000000000001 /* AppState.swift */,
+				D10000000000000000000002 /* HelpView.swift */,
+				D10000000000000000000003 /* HelpContent.swift */,
 				B10000000000000000000022 /* Assets.xcassets */,
 				B10000000000000000000023 /* Hilt.entitlements */,
 				B10000000000000000000024 /* Info.plist */,
@@ -67,7 +76,7 @@
 /* Begin PBXNativeTarget section */
 		A10000000000000000000010 /* Hilt */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = A10000000000000000000031 /* Build configuration list for PBXNativeTarget "Hilt" */;
+			buildConfigurationList = A10000000000000000000051 /* Build configuration list for PBXNativeTarget "Hilt" */;
 			buildPhases = (
 				A10000000000000000000011 /* Sources */,
 				A10000000000000000000013 /* Frameworks */,
@@ -100,7 +109,7 @@
 					};
 				};
 			};
-			buildConfigurationList = A10000000000000000000030 /* Build configuration list for PBXProject "Hilt" */;
+			buildConfigurationList = A10000000000000000000050 /* Build configuration list for PBXProject "Hilt" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -139,6 +148,9 @@
 			files = (
 				A10000000000000000000020 /* HiltApp.swift in Sources */,
 				A10000000000000000000021 /* ContentView.swift in Sources */,
+				C10000000000000000000001 /* AppState.swift in Sources */,
+				C10000000000000000000002 /* HelpView.swift in Sources */,
+				C10000000000000000000003 /* HelpContent.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -230,7 +242,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		A10000000000000000000030 /* Build configuration list for PBXProject "Hilt" */ = {
+		A10000000000000000000050 /* Build configuration list for PBXProject "Hilt" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				A10000000000000000000032 /* Debug */,
@@ -239,7 +251,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		A10000000000000000000031 /* Build configuration list for PBXNativeTarget "Hilt" */ = {
+		A10000000000000000000051 /* Build configuration list for PBXNativeTarget "Hilt" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				A10000000000000000000034 /* Debug */,
