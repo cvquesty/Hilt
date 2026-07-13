@@ -55,7 +55,31 @@ CLI:
 .build/release/hilt -o ~/Desktop/hilt-output ~/Downloads/module.bblx
 ```
 
-## TestFlight (macOS)
+## Distribute to users (outside the App Store)
+
+Notarized **Developer ID** build — send the DMG or ZIP; recipients install without Xcode.
+
+| | |
+|---|---|
+| **Bundle ID** | `org.questy.hilt` |
+| **Team** | QCLT43467P (Jerald Sheets) |
+| **Signing** | Developer ID Application (Cloud Managed) |
+| **Min macOS** | 13.0 |
+
+```bash
+bash Scripts/distribute-mac.sh
+```
+
+Artifacts land in `build/dist/`:
+
+- `Hilt-<version>.dmg` — open, drag **Hilt** → **Applications**
+- `Hilt-<version>.zip` — unzip, open **Hilt.app** (or drag to Applications)
+
+Gatekeeper should accept these as **Notarized Developer ID**. Rare first-launch block: right-click the app → **Open**.
+
+Prerequisites: Xcode signed into team `QCLT43467P`, and App Store Connect API key files under `.secrets/` (see `.secrets/README.txt`).
+
+## TestFlight / App Store Connect
 
 | | |
 |---|---|
@@ -65,15 +89,15 @@ CLI:
 | **Team** | QCLT43467P (Jerald Sheets) |
 | **Min macOS** | 13.0 |
 
-One-shot archive + upload:
+Upload a build for TestFlight (not required for the DMG/ZIP path above):
 
 ```bash
 bash Scripts/ship-mac.sh
 ```
 
-Then open [TestFlight for this app](https://appstoreconnect.apple.com/apps/6788101386/testflight/macos) (or the **TestFlight** app on your Mac) and install the latest build once processing finishes.
+Then open [TestFlight for this app](https://appstoreconnect.apple.com/apps/6788101386/testflight/macos) once processing finishes.
 
-Local install without TestFlight (dev-signed, same machine):
+Local dev install (same machine only — not for sharing):
 
 ```bash
 xcodebuild -project Hilt.xcodeproj -scheme Hilt -configuration Release \

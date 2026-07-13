@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.1 (2026-07-13) — build 4 (direct distribution)
+
+### Direct distribution (outside App Store)
+- **Developer ID** export via Cloud Managed certificate (team QCLT43467P)
+- Apple **notarization** + staple (Gatekeeper: Notarized Developer ID)
+- Installable packages: `build/dist/Hilt-0.1.1.dmg` and `Hilt-0.1.1.zip`
+- `Scripts/distribute-mac.sh` — archive → Developer ID export → notarize → DMG/ZIP
+- `ExportOptions-DeveloperID.plist` for non–App Store signing
+
 ## 0.1.1 (2026-07-06) — build 4
 
 ### App Store Connect / TestFlight
