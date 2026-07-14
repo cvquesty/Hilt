@@ -26,6 +26,9 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(dryRun, forKey: "hilt.dryRun") }
     }
 
+    /// Security-scoped bookmark so the destination survives relaunch under App Sandbox.
+    private static let outputBookmarkKey = "hilt.outputDirectoryBookmark"
+
     init() {
         let d = UserDefaults.standard
         if d.object(forKey: "hilt.overwrite") != nil {
@@ -34,6 +37,47 @@ final class AppState: ObservableObject {
         if d.object(forKey: "hilt.dryRun") != nil {
             dryRun = d.bool(forKey: "hilt.dryRun")
         }
+        restoreOutputDirectoryBookmark()
+    }
+
+    private func restoreOutputDirectoryBookmark() {
+        guard let data = UserDefaults.standard.data(forKey: Self.outputBookmarkKey) else { return }
+        var isStale = false
+        do {
+            let url = try URL(
+                resolvingBookmarkData: data,
+                options: [.withSecurityScope],
+                relativeTo: nil,
+                bookmarkDataIsStale: &isStale
+            )
+            guard url.startAccessingSecurityScopedResource() else { return }
+            outputDirectory = url
+            if isStale {
+                persistOutputDirectoryBookmark(url)
+            }
+        } catch {
+            UserDefaults.standard.removeObject(forKey: Self.outputBookmarkKey)
+        }
+    }
+
+    private func persistOutputDirectoryBookmark(_ url: URL) {
+        do {
+            let data = try url.bookmarkData(
+                options: [.withSecurityScope],
+                includingResourceValuesForKeys: nil,
+                relativeTo: nil
+            )
+            UserDefaults.standard.set(data, forKey: Self.outputBookmarkKey)
+        } catch {
+            // Bookmark optional — conversion still works for this session via the live URL.
+        }
+    }
+
+    private func setOutputDirectory(_ url: URL) {
+        _ = url.startAccessingSecurityScopedResource()
+        outputDirectory = url
+        persistOutputDirectoryBookmark(url)
+        statusMessage = "Destination set. Converted files will be written only to this folder."
     }
 
     var readyCount: Int { queue.filter(\.isConvertible).count }
@@ -88,9 +132,7 @@ final class AppState: ObservableObject {
 
         let finish: (NSApplication.ModalResponse) -> Void = { [weak self] response in
             guard response == .OK, let url = panel.url else { return }
-            _ = url.startAccessingSecurityScopedResource()
-            self?.outputDirectory = url
-            self?.statusMessage = "Destination set. Converted files will be written only to this folder."
+            self?.setOutputDirectory(url)
         }
 
         if let window = NSApp.keyWindow ?? NSApp.windows.first(where: { $0.isVisible }) {
@@ -274,6 +316,7 @@ final class AppState: ObservableObject {
                 out = url.deletingLastPathComponent().appendingPathComponent("hilt-output")
             }
             if outputDirectory == nil {
+                // Nearby hilt-output is created by us (not user-picked); no bookmark needed.
                 outputDirectory = out
             }
 

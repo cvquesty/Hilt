@@ -1,0 +1,40 @@
+Hilt — Install on this Mac
+==========================
+
+You received a notarized Developer ID build of Hilt (outside the Mac App Store).
+
+Option A — Disk image (recommended)
+  1. Open Hilt-<version>.dmg
+  2. Double-click “Install Hilt.command”  (installs to Applications and launches Hilt)
+     — or drag Hilt into the Applications folder
+  3. Eject the disk image when finished
+
+Option B — ZIP
+  1. Unzip Hilt-<version>.zip
+  2. Move Hilt.app to Applications
+  3. Open Hilt
+
+Option C — Installer package (.pkg)
+  If you received a signed Hilt-<version>.pkg:
+  1. Double-click the package
+  2. Follow the prompts (installs to /Applications)
+
+Gatekeeper
+  These builds are signed and notarized by Apple.
+  If macOS still blocks first launch: right-click Hilt → Open → Open.
+  If Install Hilt.command is blocked: right-click → Open (allows Terminal once).
+
+Requirements
+  macOS 13 Ventura or later
+  e-Sword X (to import converted modules)
+
+Quick use
+  1. Drop unlocked Windows modules (.bblx / .cmtx / .dctx / .topx) onto Sources
+  2. Choose Destination folder
+  3. Convert
+  4. e-Sword X → File → Resources → Import…
+
+Help → Hilt Help (⌘?) in the app for the full guide.
+
+Not affiliated with e-Sword or Rick Meyers.
+Apache License 2.0 — https://github.com/cvquesty/Hilt

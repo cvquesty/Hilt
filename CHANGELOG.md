@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.0 (2026-07-13) — build 5 (complete self-distribution)
+
+### Installer & packaging
+- **DMG installer** — `Install Hilt.command` copies the notarized app to `/Applications` and launches it; drag-to-Applications still works
+- **`.pkg` installer** (productbuild) with Welcome / License / Conclusion — signed+notarized when a Developer ID Installer cert is present
+- **ZIP** portable app retained for simple hand-off
+- Packaging assets under `Packaging/` (`Distribution.xml`, welcome/conclusion HTML, `INSTALL.txt`)
+- [Docs/INSTALL.md](Docs/INSTALL.md) for end users; README prioritizes direct distribution
+- App Store / TestFlight path remains optional (`Scripts/ship-mac.sh`) for a later date
+
+### App
+- Destination folder restored across launches via **security-scoped bookmark** (App Sandbox)
+- Version **0.2.0** (build **5**)
+
 ## 0.1.1 (2026-07-13) — build 4 (direct distribution)
 
 ### Direct distribution (outside App Store)

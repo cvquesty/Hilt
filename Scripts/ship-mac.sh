@@ -1,11 +1,16 @@
 #!/usr/bin/env bash
 # ship-mac.sh — archive Hilt and upload to App Store Connect / TestFlight (macOS)
+#
+# Optional path for later App Store / TestFlight work.
+# For packages you can hand out yourself, use: bash Scripts/distribute-mac.sh
+#
 # Usage: bash Scripts/ship-mac.sh
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-echo "=== Hilt macOS ship ($(date -u +%Y-%m-%dT%H:%MZ)) ==="
+echo "=== Hilt macOS App Store ship ($(date -u +%Y-%m-%dT%H:%MZ)) ==="
+echo "(Direct distribution: bash Scripts/distribute-mac.sh)"
 echo "Version: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Hilt/Info.plist 2>/dev/null || true)"
 echo "  (resolved from Xcode MARKETING_VERSION / CURRENT_PROJECT_VERSION at archive time)"
 
