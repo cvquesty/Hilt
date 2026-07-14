@@ -24,6 +24,18 @@ Hilt converts **unlocked** Windows / BibleSupport-style e-Sword modules into the
 - Xcode 15+ to build from source
 - [e-Sword X](https://www.e-sword.net/mac/) to import results
 
+## Website & App Store URLs
+
+Public site: **[https://hiltutil.org](https://hiltutil.org)** (hosted on server.questy.org at `/var/www/html/hilt`)
+
+| App Store Connect field | URL |
+|-------------------------|-----|
+| Marketing URL | https://hiltutil.org/ |
+| Support URL | https://hiltutil.org/support.html |
+| Privacy Policy URL | https://hiltutil.org/privacy.html |
+
+Site sources: [website/](website/)
+
 ## Download & install (end users)
 
 See **[Docs/INSTALL.md](Docs/INSTALL.md)**.

@@ -1,5 +1,13 @@
 # Changelog
 
+## Website (2026-07-14)
+
+### Publicity site — hiltutil.org
+- Static marketing site at **https://hiltutil.org** (docroot `/var/www/html/hilt` on server.questy.org)
+- App Store–ready pages: home, **support**, **privacy**
+- Let's Encrypt TLS for `hiltutil.org`; HTTP → HTTPS redirect
+- Sources under [website/](website/)
+
 ## 0.2.0 (2026-07-13) — build 5 (complete self-distribution)
 
 ### Installer & packaging

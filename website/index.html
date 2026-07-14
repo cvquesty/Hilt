@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hilt — Mac-native e-Sword module conversion for e-Sword X</title>
+  <meta name="description" content="Hilt converts unlocked Windows e-Sword modules into files you can import into e-Sword X on the Mac — no Wine, no VM, no Windows PC." />
+  <meta name="theme-color" content="#1A2744" />
+  <link rel="icon" type="image/png" href="/assets/favicon.png" />
+  <link rel="apple-touch-icon" href="/assets/icon.png" />
+  <meta property="og:title" content="Hilt — e-Sword modules for the Mac" />
+  <meta property="og:description" content="Convert unlocked Windows e-Sword modules for e-Sword X. Mac-native. Notarized. Direct download." />
+  <meta property="og:image" content="https://hiltutil.org/assets/og.png" />
+  <meta property="og:url" content="https://hiltutil.org/" />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <style>
+    :root {
+      --navy: #1A2744;
+      --navy-deep: #0F1829;
+      --steel: #3D5A80;
+      --steel-soft: #5C7A9E;
+      --mist: #E8EEF5;
+      --brass: #C9A227;
+      --brass-soft: #F3E7B8;
+      --paper: #F7F5F1;
+      --ink: #1A1A1C;
+      --muted: #5C6470;
+      --card: #FFFFFF;
+      --border: #D9DEE6;
+      --shadow: rgba(15, 24, 41, 0.09);
+      --ok: #2F6B4F;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--steel); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .hero {
+      position: relative;
+      min-height: min(88vh, 680px);
+      display: flex;
+      align-items: flex-end;
+      color: #fff;
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse 80% 60% at 70% 20%, rgba(201, 162, 39, 0.18), transparent 55%),
+        linear-gradient(155deg, var(--navy-deep) 0%, var(--navy) 45%, var(--steel) 100%);
+    }
+    .hero-grid {
+      position: absolute;
+      inset: 0;
+      opacity: 0.07;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+    }
+    .hero-inner {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 720px;
+      padding: 2rem 1.75rem 3.25rem;
+    }
+    .eyebrow {
+      color: var(--brass-soft);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin-bottom: 0.65rem;
+    }
+    .hero h1 {
+      font-size: clamp(2.4rem, 7vw, 3.1rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.05;
+    }
+    .hero .sub {
+      margin-top: 0.45rem;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.95);
+    }
+    .hero .tag {
+      margin-top: 0.85rem;
+      font-size: 1.02rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.82);
+      max-width: 26rem;
+      line-height: 1.45;
+    }
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1.75rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.85rem 1.35rem;
+      border-radius: 999px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      text-decoration: none !important;
+      transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary {
+      background: var(--brass);
+      color: var(--navy-deep);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+    }
+    .btn-primary:hover { background: #dbb63a; }
+    .btn-ghost {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.32);
+      backdrop-filter: blur(6px);
+    }
+    .btn-ghost:hover { background: rgba(255, 255, 255, 0.18); }
+    .btn-navy {
+      background: var(--navy);
+      color: #fff;
+      box-shadow: 0 4px 14px var(--shadow);
+    }
+    .btn-navy:hover { background: var(--steel); }
+
+    .wrap { max-width: 720px; margin: 0 auto; padding: 0 1.25rem; }
+    section { padding: 2.75rem 0; }
+    section + section { border-top: 1px solid var(--border); }
+    .section-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--steel);
+      margin-bottom: 0.6rem;
+    }
+    h2 {
+      font-size: 1.55rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      margin-bottom: 0.75rem;
+      color: var(--ink);
+    }
+    p.lead {
+      font-size: 1.05rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .brand-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .app-icon {
+      width: 72px;
+      height: 72px;
+      border-radius: 16px;
+      box-shadow: 0 8px 24px var(--shadow);
+      border: 1px solid var(--border);
+      background: var(--card);
+      object-fit: cover;
+    }
+    .brand-meta strong { display: block; font-size: 1.15rem; font-weight: 800; }
+    .brand-meta span { color: var(--muted); font-size: 0.9rem; font-weight: 500; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.25rem 1.35rem;
+      box-shadow: 0 2px 10px var(--shadow);
+      margin-top: 1rem;
+    }
+    .card.accent {
+      background: linear-gradient(135deg, var(--mist), #fff);
+      border-color: #c5d2e3;
+    }
+    .card h3 {
+      font-size: 1.05rem;
+      font-weight: 800;
+      margin-bottom: 0.4rem;
+      color: var(--navy);
+    }
+    .card p {
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.55;
+    }
+
+    .grid { display: grid; gap: 0.85rem; margin-top: 1.15rem; }
+    @media (min-width: 560px) {
+      .grid.two { grid-template-columns: 1fr 1fr; }
+    }
+
+    .chip-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      background: var(--mist);
+      color: var(--navy);
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+    .chip.gold {
+      background: var(--brass-soft);
+      color: #6b5410;
+    }
+
+    .feature {
+      display: flex;
+      gap: 0.9rem;
+      align-items: flex-start;
+    }
+    .feature-dot {
+      flex-shrink: 0;
+      width: 2.25rem;
+      height: 2.25rem;
+      border-radius: 10px;
+      background: var(--mist);
+      color: var(--navy);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.85rem;
+    }
+    .feature strong { display: block; font-size: 0.98rem; margin-bottom: 0.15rem; }
+    .feature span { color: var(--muted); font-size: 0.9rem; line-height: 1.45; }
+
+    table.fmt {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      font-size: 0.92rem;
+    }
+    table.fmt th, table.fmt td {
+      text-align: left;
+      padding: 0.55rem 0.65rem;
+      border-bottom: 1px solid var(--border);
+    }
+    table.fmt th {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--steel);
+      font-weight: 700;
+    }
+    table.fmt code {
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 0.85rem;
+      background: var(--mist);
+      padding: 0.12rem 0.4rem;
+      border-radius: 4px;
+      color: var(--navy);
+    }
+
+    .cta-band {
+      background: linear-gradient(145deg, var(--navy-deep), var(--steel));
+      color: #fff;
+      border-radius: 20px;
+      padding: 1.75rem 1.5rem;
+      margin: 0.5rem 0 0.25rem;
+      box-shadow: 0 10px 30px rgba(26, 39, 68, 0.28);
+    }
+    .cta-band h2 { color: #fff; font-size: 1.35rem; margin-bottom: 0.5rem; }
+    .cta-band p {
+      color: rgba(255, 255, 255, 0.88);
+      font-size: 0.95rem;
+      margin-bottom: 1.15rem;
+      max-width: 30rem;
+    }
+
+    .support-email {
+      display: inline-block;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--navy);
+      margin-top: 0.35rem;
+    }
+
+    footer {
+      padding: 2rem 0 2.5rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    footer nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem 1.25rem;
+      margin-bottom: 1rem;
+    }
+    footer a { color: var(--muted); font-weight: 600; }
+    footer a:hover { color: var(--navy); }
+    .fine { font-size: 0.8rem; line-height: 1.5; max-width: 38rem; }
+  </style>
+</head>
+<body>
+  <header class="hero" role="banner">
+    <div class="hero-grid" aria-hidden="true"></div>
+    <div class="hero-inner">
+      <p class="eyebrow">macOS utility</p>
+      <h1>Hilt</h1>
+      <p class="sub">e-Sword modules for the Mac</p>
+      <p class="tag">Convert unlocked Windows modules for e-Sword&nbsp;X — without Wine, a VM, or a Windows PC.</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#download">Get Hilt</a>
+        <a class="btn btn-ghost" href="#how">How it works</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="about" aria-labelledby="about-heading">
+      <div class="wrap">
+        <div class="brand-row">
+          <img class="app-icon" src="/assets/icon.png" width="72" height="72" alt="Hilt app icon" />
+          <div class="brand-meta">
+            <strong>Hilt</strong>
+            <span>macOS 13+ · Utility</span>
+          </div>
+        </div>
+
+        <p class="section-label">Welcome</p>
+        <h2 id="about-heading">The grip that carries the blade</h2>
+        <p class="lead">
+          A hilt is what you hold when you carry a sword. e-Sword&nbsp;X is the blade;
+          Hilt is the grip that lets Mac users carry community modules with it.
+        </p>
+        <p class="lead" style="margin-top: 0.75rem;">
+          Drop unlocked Windows / BibleSupport-style modules onto Hilt, choose a destination folder,
+          convert, then import into e-Sword&nbsp;X. Sources are never modified.
+        </p>
+        <div class="chip-row">
+          <span class="chip">Notarized Developer ID</span>
+          <span class="chip gold">Direct download</span>
+          <span class="chip">Unlocked modules only</span>
+          <span class="chip">Offline conversion</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="how" aria-labelledby="how-heading">
+      <div class="wrap">
+        <p class="section-label">Workflow</p>
+        <h2 id="how-heading">Four clear steps</h2>
+        <div class="grid" style="margin-top: 1.25rem;">
+          <div class="feature">
+            <div class="feature-dot">1</div>
+            <div>
+              <strong>Add sources</strong>
+              <span>Drop or open unlocked Windows modules (.bblx, .cmtx, .dctx, .topx).</span>
+            </div>
+          </div>
+          <div class="feature">
+            <div class="feature-dot">2</div>
+            <div>
+              <strong>Choose destination</strong>
+              <span>Pick the folder where converted files are written — never onto your sources.</span>
+            </div>
+          </div>
+          <div class="feature">
+            <div class="feature-dot">3</div>
+            <div>
+              <strong>Convert</strong>
+              <span>Only Ready rows convert. Encrypted or unreadable modules show a clear reason.</span>
+            </div>
+          </div>
+          <div class="feature">
+            <div class="feature-dot">4</div>
+            <div>
+              <strong>Import in e-Sword&nbsp;X</strong>
+              <span>File → Resources → Import… then restart e-Sword&nbsp;X if needed.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="formats" aria-labelledby="formats-heading">
+      <div class="wrap">
+        <p class="section-label">Formats</p>
+        <h2 id="formats-heading">What Hilt converts</h2>
+        <p class="lead">MVP support for the common unlocked module types:</p>
+        <div class="card" style="padding: 0.5rem 0.75rem 0.75rem;">
+          <table class="fmt">
+            <thead>
+              <tr>
+                <th>Windows source</th>
+                <th>Type</th>
+                <th>e-Sword X</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>.bblx</code></td>
+                <td>Bible</td>
+                <td><code>.bbli</code></td>
+              </tr>
+              <tr>
+                <td><code>.cmtx</code></td>
+                <td>Commentary</td>
+                <td><code>.cmti</code></td>
+              </tr>
+              <tr>
+                <td><code>.dctx</code></td>
+                <td>Dictionary</td>
+                <td><code>.dcti</code></td>
+              </tr>
+              <tr>
+                <td><code>.topx</code></td>
+                <td>Topic notes</td>
+                <td><code>.topi</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card accent">
+          <h3>Honest limits</h3>
+          <p>
+            Hilt does <strong>not</strong> decrypt premium or product-key modules.
+            It is not affiliated with e-Sword or Rick Meyers.
+            Respect copyright on the content you convert.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="download" aria-labelledby="download-heading">
+      <div class="wrap">
+        <div class="cta-band">
+          <h2 id="download-heading">Download for Mac</h2>
+          <p>
+            Notarized Developer ID builds you can install yourself — no App Store account required.
+            Open the disk image and run <strong>Install Hilt</strong>, or drag Hilt into Applications.
+          </p>
+          <div style="display:flex;flex-wrap:wrap;gap:0.65rem;">
+            <a class="btn btn-primary" href="https://github.com/cvquesty/Hilt/releases">
+              Download releases
+            </a>
+            <a class="btn btn-ghost" href="https://github.com/cvquesty/Hilt">
+              Source on GitHub
+            </a>
+          </div>
+        </div>
+        <p class="fine" style="margin-top: 1rem; color: var(--muted);">
+          Requires macOS 13 Ventura or later (Apple silicon and Intel).
+          App Store distribution may be offered later; this site remains the support home either way.
+        </p>
+      </div>
+    </section>
+
+    <section id="support" aria-labelledby="support-heading">
+      <div class="wrap">
+        <p class="section-label">Support</p>
+        <h2 id="support-heading">We are here to help</h2>
+        <p class="lead">
+          Questions about conversion, install, accessibility, or a module that will not convert?
+          Email the team — we read every message.
+        </p>
+        <div class="card accent" style="margin-top: 1.15rem;">
+          <h3 style="margin-bottom: 0.25rem;">Email support</h3>
+          <a class="support-email" href="mailto:support@ssconsultinggroup.net">support@ssconsultinggroup.net</a>
+          <p style="margin-top: 0.85rem;">
+            Please include your macOS version and Hilt version (Hilt → About Hilt).
+            For conversion issues, the module type and a short description of the Reason column help a lot.
+            We aim to reply within a few business days.
+          </p>
+          <p style="margin-top: 0.75rem;">
+            Full support page: <a href="/support.html">hiltutil.org/support.html</a>
+          </p>
+        </div>
+        <div class="grid two" style="margin-top: 0.25rem;">
+          <div class="card">
+            <h3>Privacy</h3>
+            <p>See how Hilt handles data in our
+              <a href="/privacy.html">Privacy Policy</a>.</p>
+          </div>
+          <div class="card">
+            <h3>Publisher</h3>
+            <p>S &amp; S Consulting Group · Mac utilities built with care.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <nav aria-label="Footer">
+        <a href="#about">About</a>
+        <a href="#how">How it works</a>
+        <a href="#formats">Formats</a>
+        <a href="#download">Download</a>
+        <a href="/support.html">Support</a>
+        <a href="/privacy.html">Privacy</a>
+        <a href="mailto:support@ssconsultinggroup.net">Contact</a>
+        <a href="https://github.com/cvquesty/Hilt">GitHub</a>
+      </nav>
+      <p class="fine">
+        © <span id="y"></span> S &amp; S Consulting Group.
+        Hilt is an independent open-source utility and is <strong>not</strong> affiliated with or endorsed by
+        Rick Meyers or e-Sword.net. e-Sword® is a trademark of its respective owner.
+        Apache License 2.0.
+      </p>
+    </div>
+  </footer>
+  <script>
+    document.getElementById('y').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
