@@ -38,7 +38,7 @@ Site sources: [website/](website/)
 
 ## Download & install (end users)
 
-**Latest:** [Hilt 0.2.0 (.dmg)](https://github.com/cvquesty/Hilt/releases/download/v0.2.0/Hilt-0.2.0.dmg) · [all releases](https://github.com/cvquesty/Hilt/releases) · site: [hiltutil.org](https://hiltutil.org)
+**Latest:** [Hilt 1.0.0 (.dmg)](https://github.com/cvquesty/Hilt/releases/download/v1.0.0/Hilt-1.0.0.dmg) · [all releases](https://github.com/cvquesty/Hilt/releases) · site: [hiltutil.org](https://hiltutil.org)
 
 See **[Docs/INSTALL.md](Docs/INSTALL.md)**.
 

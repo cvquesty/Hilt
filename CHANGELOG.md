@@ -2,10 +2,13 @@
 
 ## Website (2026-07-21)
 
-### Direct download — v0.2.0 on GitHub
-- GitHub release **[v0.2.0](https://github.com/cvquesty/Hilt/releases/tag/v0.2.0)** with `Hilt-0.2.0.dmg`
-- [hiltutil.org](https://hiltutil.org) hero + Download section link straight to the DMG
-- Same marketing version as the build under Mac App Store review
+### Public download — v1.0.0 on GitHub
+- GitHub release **[v1.0.0](https://github.com/cvquesty/Hilt/releases/tag/v1.0.0)** with `Hilt-1.0.0.dmg` (Latest)
+- [hiltutil.org](https://hiltutil.org) hero + Download section link to the 1.0.0 DMG
+- Public release name **1.0.0** matches App Store Connect / planned Mac App Store version; project build remains the notarized Developer ID package
+
+### Earlier same day
+- GitHub release **[v0.2.0](https://github.com/cvquesty/Hilt/releases/tag/v0.2.0)** with `Hilt-0.2.0.dmg` (superseded as Latest by v1.0.0)
 
 ## Website (2026-07-14)
 
