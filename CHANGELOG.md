@@ -1,5 +1,12 @@
 # Changelog
 
+## Website (2026-07-21)
+
+### Direct download — v0.2.0 on GitHub
+- GitHub release **[v0.2.0](https://github.com/cvquesty/Hilt/releases/tag/v0.2.0)** with `Hilt-0.2.0.dmg`
+- [hiltutil.org](https://hiltutil.org) hero + Download section link straight to the DMG
+- Same marketing version as the build under Mac App Store review
+
 ## Website (2026-07-14)
 
 ### Publicity site — hiltutil.org
